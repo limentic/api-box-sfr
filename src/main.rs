@@ -9,11 +9,11 @@ const SERVER_ADDRESS: &str = "localhost";
 const PORT: u32 = 8080;
 
 const DECODER_IP_ADDRESS: &str = "192.168.1.100";
-const DECODER_MAC_ADDRESS: &str = "61:23:bd:c7:c3:08";
+const DECODER_MAC_ADDRESS: &str = "xx:xx:xx:xx:xx:xx";
 
 const BOX_SN: &str = "XXXXXXXXXXXXXXXXXX";
 const BOX_MAC_ADDRESS: &str = "xx:xx:xx:xx:xx:xx";
-const BOX_IDUR: &str = "";
+const BOX_IDUR: &str = "XXXXXXX";
 
 fn main() {
     let listener = TcpListener::bind(format!("{}:{:?}", SERVER_ADDRESS, PORT)).unwrap();
@@ -57,7 +57,7 @@ fn handle_client<T: Read + Write>(mut stream: T) {
             response = wan_get_info()
         },
         _ => {
-            response = format!("HTTP/1.1 200 OK\r\n Content-Type: text/plain\r\n\r\n")
+            response = default_response()
         },
     }
 
@@ -92,10 +92,13 @@ fn system_get_info() -> String {
         Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
     };
 
-    return format!("HTTP/1.1 200 OK\
-    \r\n Content-Type: text/xml\
-    \r\n
-    \r\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
+    let date = Command::new("date").arg("+%a, %d %b %Y %X %Z").output().expect("Error with date command");
+    let current_date = match str::from_utf8(&*date.stdout) {
+        Ok(v) => v.trim(),
+        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    };
+
+    let payload = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
     <rsp stat=\"ok\" version=\"1.0\">\
         <system product_id=\"NB6VAC-FXC-r0\" \
             serial_number=\"{}\" \
@@ -113,33 +116,44 @@ fn system_get_info() -> String {
             alimvoltage=\"12251\" \
             temperature=\"48399\" \
          />\
-    </rsp>\n", BOX_SN, BOX_MAC_ADDRESS, current_uptime, current_datetime, BOX_IDUR);
+    </rsp>", BOX_SN, BOX_MAC_ADDRESS, current_uptime, current_datetime, BOX_IDUR);
+
+    return format!("HTTP/1.1 200 OK\r\n\
+    Content-Length: {}\r\n\
+    Content-Type: text/xml; charset=utf-8\r\n\
+    Date: {}\r\n\
+    Server: Rust\r\n\
+    \r\n{}", payload.len(), current_date, payload);
 }
 
 fn ftth_get_info() -> String {
-    let date = Command::new("date").output().expect("Error with date command");
+    let date = Command::new("date").arg("+%a, %d %b %Y %X %Z").output().expect("Error with date command");
     let current_date = match str::from_utf8(&*date.stdout) {
         Ok(v) => v.trim(),
         Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
     };
 
-    return format!("HTTP/1.1 200 OK \
-    \n Content-Length: 108 \
-    \n Content-Type: text/xml \
-    \n Date: {} \
-    \n Server: Rust \
-    \n\n \
-    <?xml version=\"1.0\" encoding=\"UTF-8\"?>\
+    let payload = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
     <rsp stat=\"ok\" version=\"1.0\">\
         <ftth status=\"up\" wanfibre=\"in\"/>\
-    </rsp>", current_date);
+    </rsp>";
+
+    return format!("HTTP/1.1 200 OK\r\n\
+    Content-Length: {}\r\n\
+    Content-Type: text/xml; charset=utf-8\r\n\
+    Date: {}\r\n\
+    Server: Rust\r\n\
+    \r\n{}", payload.len(), current_date, payload);
 }
 
 fn lan_get_hosts_list() -> String {
-    return format!("HTTP/1.1 200 OK\
-    \r\n Content-Type: text/xml\
-    \r\n
-    \r\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
+    let date = Command::new("date").arg("+%a, %d %b %Y %X %Z").output().expect("Error with date command");
+    let current_date = match str::from_utf8(&*date.stdout) {
+        Ok(v) => v.trim(),
+        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    };
+
+    let payload = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
     <rsp stat=\"ok\" version=\"1.0\">\
         <host type=\"stb\" \
             name=\"STB7\" \
@@ -150,7 +164,14 @@ fn lan_get_hosts_list() -> String {
             alive=\"350261\" \
             status=\"online\" \
         />\
-    </rsp>\n", DECODER_IP_ADDRESS, DECODER_MAC_ADDRESS);
+    </rsp>", DECODER_IP_ADDRESS, DECODER_MAC_ADDRESS);
+
+    return format!("HTTP/1.1 200 OK\r\n\
+    Content-Length: {}\r\n\
+    Content-Type: text/xml; charset=utf-8\r\n\
+    Date: {}\r\n\
+    Server: Rust\r\n\
+    \r\n{}", payload.len(), current_date, payload);
 }
 
 fn wan_get_info() -> String {
@@ -166,10 +187,14 @@ fn wan_get_info() -> String {
         Ok(v) => v,
         Err(..) => "",
     };
-    return format!("HTTP/1.1 200 OK\
-    \r\n Content-Type: text/xml\
-    \r\n
-    \r\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
+
+    let date = Command::new("date").arg("+%a, %d %b %Y %X %Z").output().expect("Error with date command");
+    let current_date = match str::from_utf8(&*date.stdout) {
+        Ok(v) => v.trim(),
+        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    };
+
+    let payload = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
     <rsp stat=\"ok\" version=\"1.0\">\
         <wan status=\"up\" \
             uptime=\"{}\" \
@@ -181,5 +206,27 @@ fn wan_get_info() -> String {
             uptime6=\"\" \
             ipv6_addr=\"\" \
         />\
-    </rsp>\n", current_uptime, current_address);
+    </rsp>", current_uptime, current_address);
+
+    return format!("HTTP/1.1 200 OK\r\n\
+    Content-Length: {}\r\n\
+    Content-Type: text/xml; charset=utf-8\r\n\
+    Date: {}\r\n\
+    Server: Rust\r\n\
+    \r\n{}", payload.len(), current_date, payload);
+}
+
+fn default_response() -> String {
+    let date = Command::new("date").arg("+%a, %d %b %Y %X %Z").output().expect("Error with date command");
+    let current_date = match str::from_utf8(&*date.stdout) {
+        Ok(v) => v.trim(),
+        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    };
+
+    return format!("HTTP/1.1 200 OK\r\n\
+    Content-Length: {}\r\n\
+    Content-Type: text/xml; charset=utf-8\r\n\
+    Date: {}\r\n\
+    Server: Rust\r\n\
+    \r\n\"\"", 0, current_date);
 }
