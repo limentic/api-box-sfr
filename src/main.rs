@@ -48,13 +48,13 @@ fn handle_client<T: Read + Write>(mut stream: T) {
             response = system_get_info()
         },
         "/api/1.0/?method=ftth.getInfo" => {
-            response = ftth_get_info().to_string()
+            response = ftth_get_info()
         },
         "/api/1.0/?method=lan.getHostsList" => {
             response = lan_get_hosts_list()
         },
         "/api/1.0/?method=wan.getInfo" => {
-            response = wan_get_info().to_string()
+            response = wan_get_info()
         },
         _ => {
             response = format!("HTTP/1.1 200 OK\r\n Content-Type: text/plain\r\n\r\n")
@@ -116,14 +116,23 @@ fn system_get_info() -> String {
     </rsp>\n", BOX_SN, BOX_MAC_ADDRESS, current_uptime, current_datetime, BOX_IDUR);
 }
 
-fn ftth_get_info() -> &'static str {
-    return "HTTP/1.1 200 OK\
-    \r\n Content-Type: text/xml\
-    \r\n
-    \r\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\
+fn ftth_get_info() -> String {
+    let date = Command::new("date").output().expect("Error with date command");
+    let current_date = match str::from_utf8(&*date.stdout) {
+        Ok(v) => v.trim(),
+        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    };
+
+    return format!("HTTP/1.1 200 OK \
+    \n Content-Length: 108 \
+    \n Content-Type: text/xml \
+    \n Date: {} \
+    \n Server: Rust \
+    \n\n \
+    <?xml version=\"1.0\" encoding=\"UTF-8\"?>\
     <rsp stat=\"ok\" version=\"1.0\">\
         <ftth status=\"up\" wanfibre=\"in\"/>\
-    </rsp>\n";
+    </rsp>", current_date);
 }
 
 fn lan_get_hosts_list() -> String {
